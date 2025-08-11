@@ -1,0 +1,19 @@
+&spi1 {
+    status = "okay";
+    pinctrl-0 = <&spi1_sck_pa5 &spi1_miso_pa6 &spi1_mosi_pa7>;
+    pinctrl-names = "default";
+    cs-gpios = <&gpioe 11 GPIO_ACTIVE_LOW>;
+
+
+    sdhc0: sdhc@0 {
+            compatible = "zephyr,sdhc-spi-slot";
+            reg = <0>;
+            status = "okay";
+            mmc {
+                compatible = "zephyr,sdmmc-disk";
+                disk-name = "SD";
+                status = "okay";
+            };
+            spi-max-frequency = <24000000>;
+    };
+};

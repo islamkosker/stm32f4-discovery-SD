@@ -1,0 +1,10 @@
+   {
+   "C_Cpp.default.compileCommands": "${workspaceFolder}/.build/compile_commands.json",
+   "files.associations": {
+      ".fantomasignore": "ignore",
+      "logger.h": "c",
+      "kernel.h": "c",
+      "fs.h": "c",
+      "ff.h": "c"
+   },
+   }
