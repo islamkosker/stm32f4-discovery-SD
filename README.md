@@ -107,11 +107,9 @@ Dilerseniz [PlatformIO](https://platformio.org/install/ide?install=vscode) veya 
 
 ## 📝 Notlar
 
-- **BOOT0** pini `1` (high) olmalıdır. Programlama sonrası çalıştırmak için tekrar `0` yapılmalıdır.
-- COM port numarası değişebilir; `Device Manager` üzerinden doğrulayınız.
 
 
-`$env:ZEPHYR_BASE="C:\Users\Admin\Developer\sdk\zephyr\zephyrproject\zephyr"`
-`$env:ZEPHYR_SDK_INSTALL_DIR="C:\Users\Admin\Developer\sdk\zephyr\zephyr-sdk-0.17.2"`
-`C:\Users\Admin\Developer\sdk\zephyr\zephyrproject\.venv\Scripts\Activate.ps1`
-`C:\Windows\system32\cmd.exe /d /s /c "west build -b stm32f4_disco  . --build-dir .build  -- -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DEXTRA_DTC_OVERLAY_FILE=stm32f4_disco_stm32f407x.overlay"`
+- `$env:ZEPHYR_BASE="C:\Users\Admin\Developer\sdk\zephyr\zephyrproject\zephyr"`
+- `$env:ZEPHYR_SDK_INSTALL_DIR="C:\Users\Admin\Developer\sdk\zephyr\zephyr-sdk-0.17.2"`
+- `C:\Users\Admin\Developer\sdk\zephyr\zephyrproject\.venv\Scripts\Activate.ps1`
+- `C:\Windows\system32\cmd.exe /d /s /c "west build -b stm32f4_disco  . --build-dir .build  -- -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DEXTRA_DTC_OVERLAY_FILE=stm32f4_disco_stm32f407x.overlay"`
