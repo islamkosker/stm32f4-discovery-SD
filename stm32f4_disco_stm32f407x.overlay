@@ -11,9 +11,21 @@
             status = "okay";
             mmc {
                 compatible = "zephyr,sdmmc-disk";
-                disk-name = "SD";
+                disk-name = "SDHC";
                 status = "okay";
             };
             spi-max-frequency = <24000000>;
     };
+};
+
+&adc1 {
+	status = "okay";
+
+};
+
+/* ADC1 -> channel 10  (PC0/IN10)  */
+ / {
+	zephyr,user {
+		io-channels = <&adc1 10>;
+	};
 };

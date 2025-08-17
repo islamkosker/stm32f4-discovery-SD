@@ -1,115 +1,138 @@
-# cs-embedded-v2
+# STM32F4 (Zephyr) – 500 kS/s ADC → SD (SPI) Streamer
 
-Bu proje Zephyr RTOS üzerinde STM32F103 için hazırlanmıştır. Projeyi derlemek ve cihaza yüklemek için aşağıdaki adımları takip ediniz.
+This project samples **ADC1/IN10 (PC0)** at **500 kS/s (2 µs period)** using **TIM2 TRGO** as the external trigger and moves data via **DMA (double-buffer)** into RAM. A writer thread batches raw samples into a 512‑byte–aligned buffer and writes them to a **FAT** volume on an **SPI SD card**.
 
----
-
-## 📦 Zephyr Ortamının Kurulumu
-
-1. [Zephyr Başlangıç Kılavuzu](https://docs.zephyrproject.org/latest/develop/getting_started/index.html) adresindeki talimatlara göre Zephyr ortamını kurun.
-
-
-
-2. **STM32CubeProgrammer** uygulamasını indirin:  
-   👉 [STMicroelectronics STM32CubeProgrammer](https://www.st.com/en/development-tools/flasher-stm32.html#getsoftware-scroll)
-
-3. (Opsiyonel) CLI'den erişim için STM32CubeProgrammer'ın `bin` klasörünü `Path` ortam değişkenine ekleyin:
-
-   ```powershell
-    [Environment]::SetEnvironmentVariable("Path", "$([Environment]::GetEnvironmentVariable('Path','User'));C:\Program Files\STMicroelectronics\STM32Cube\STM32CubeProgrammer\bin", "User")   
-    ```
-
-4. ZEPHYR_ROOT ve ZEPHYR_ENV ortam değişkenini kalıcı olarak ayarlayın:
-
-   ```powershell
-   [Environment]::SetEnvironmentVariable("ZEPHYR_ROOT", "C:\Users\Admin\zephyrproject\zephyr", "User")
-   [Environment]::SetEnvironmentVariable("ZEPHYR_ENV", "C:\Users\Admin\zephyrproject\.venv\Scripts\Activate.ps1", "User")
-
-   ```
+> **Output file:** `/SD:/adc_500ksps.bin` (by default). Samples are **little‑endian 16‑bit unsigned**.
 
 ---
 
-## ⚙️ Derleme
+## DeviceTree (overlay) – example
 
-Otomatik olarak derlemek için gerekli dizinleri `build.ps1` dosyasını düzenleyerek çalıştırıp derleyebilirsiniz. Yada aşağıdaki manuel yöntemi kullanabilirsiniz. Derleme tamamlandıktan sonra eğer include hataları alırsanız .vscode\settings.json dosyasında compile_commands.json bildirilmiş olduğundan emin olun 
+Adapt the following to your board. The important bits are `zephyr,sdhc-spi-slot` and the **disk-name** matching the **mount point** you use in code:
 
-settings.json görünümü şu şekilde olmalı
-```json
-   {
-    "C_Cpp.default.compileCommands": "${workspaceFolder}/.build/compile_commands.json",
-   }
+```dts
+&spi1 {
+    status = "okay";
+    pinctrl-0 = <&spi1_sck_pa5 &spi1_miso_pa6 &spi1_mosi_pa7>;
+    pinctrl-names = "default";
+    cs-gpios = <&gpioe 11 GPIO_ACTIVE_LOW>;
+    spi-max-frequency = <24000000>;   /* 24 MHz for decent throughput */
+
+    sdhc0: sdhc@0 {
+        compatible = "zephyr,sdhc-spi-slot";
+        reg = <0>;
+        status = "okay";
+
+        mmc: mmc {
+            compatible = "zephyr,sdmmc-disk";
+            disk-name = "SD";         /* <-- then mount at "/SD:" */
+            status = "okay";
+        };
+    };
+};
+
+&adc1 { status = "okay"; };
+
+/* Inform the app which ADC channel we use */
+/ {
+    zephyr,user {
+        io-channels = <&adc1 10>;    /* ADC1 channel 10 (PC0) */
+    };
+};
 ```
 
-
-
-1. `west` ortamını aktif edin:
-
-   ```bash
-   & $env:ZEPHYR_ENV      
-   ```
-
-3. Derleme işlemi:
-
-   ```bash
-    cd ..\cs-embedded-v2
-    west build -b stm32f103_mini . --build-dir .build  -- -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
-   ```
-
 ---
 
-## 🔌 Firmware Yükleme
+## Kconfig (prj.conf)
 
-Aşağıdaki komutla `zephyr.bin` dosyasını STM32'ye UART üzerinden yükleyebilirsiniz:
+Minimum set (add to what you already have):
 
-```powershell
-STM32_Programmer_CLI.exe -c port=COM7 baudrate=115200 -w build\zephyr\zephyr.bin 0x08000000 -v -rst
+```ini
+# ADC + DMA
+CONFIG_ADC=y
+CONFIG_ADC_STM32=y
+CONFIG_DMA=y
+CONFIG_DMA_STM32=y
+
+# SPI + SD over SPI + FAT
+CONFIG_SPI=y
+CONFIG_DISK_ACCESS=y
+CONFIG_DISK_DRIVER_SDMMC=y    # SD/MMC disk driver
+CONFIG_SDMMC_SPI=y            # SD driver over SPI
+CONFIG_FILE_SYSTEM=y
+CONFIG_FAT_FILESYSTEM_ELM=y
+CONFIG_FS_FATFS_LFN=y         # long filenames (optional)
+
+# Stacks, logging
+CONFIG_MAIN_STACK_SIZE=4096
+CONFIG_ISR_STACK_SIZE=2048
+CONFIG_LOG=y
+CONFIG_LOG_DEFAULT_LEVEL=2    # drop to 1 or 0 for max throughput
 ```
 
-> `build/zephyr/zephyr.bin` dosyasının yolunu kontrol edin.
+> If your Zephyr version uses slightly different symbols for SD‑over‑SPI, enable the SD/MMC disk driver and its SPI mode accordingly.
 
 ---
 
-## 🔍 Seri Port İzleme (Windows)
+## Build & Flash
 
-### Seçenek 1: PlatformIO veya PuTTY
-Dilerseniz [PlatformIO](https://platformio.org/install/ide?install=vscode) veya PuTTY ile `COM` portu izleyebilirsiniz.
+```bash
+west build -b stm32f4_disco . -t pristine
+west flash
+```
 
-### Seçenek 2: Plink (Putty CLI)
-
-1. Plink'i indirin:
-
-   ```powershell
-   Invoke-WebRequest -Uri "https://the.earth.li/~sgtatham/putty/latest/w64/plink.exe" -OutFile "$env:USERPROFILE\.plink\plink.exe"
-   ```
-
-2. Ortam değişkenine ekleyin:
-
-   ```powershell
-   [Environment]::SetEnvironmentVariable("Path", "$([Environment]::GetEnvironmentVariable('Path','User'));$env:USERPROFILE\.plink", "User")
-   ```
-
-3. Seri portu izle:
-
-   ```powershell
-   plink -serial COM7 -sercfg 115200,8,n,1,N
-   ```
+- Ensure toolchain/SDK is installed and your board is connected.
+- Format the SD card as **FAT32** (single partition).
 
 ---
 
-## 🛠 Gereksinimler
+## File format & rate
 
-- Python 3.8+
-- Zephyr SDK + west
-- STM32CubeProgrammer
-- UART-USB dönüştürücü (ör. CP2102)
+- **File:** `adc_500ksps.bin` on the SD card root.
+- **Sample format:** `uint16_t` little‑endian; nominal range 0–4095 at 12‑bit resolution.
+- **Rate:** 500 000 samples/second ⇒ **~1.0 MB/s** sustained to SD. Use fast cards and keep SPI at ≥ 18–24 MHz.
 
 ---
 
-## 📝 Notlar
+## Throughput tips
+
+- Use **fast SD** cards and set `spi-max-frequency` to a safe high value (e.g., 24 MHz).
+- Keep the writer thread at **high priority** (e.g., `-1` or `-2` cooperative) so it empties the queue quickly.
+- Increase the message queue depth (e.g., **128** blocks) for >60 ms buffering headroom.
+- Use a **large, 512‑aligned** output buffer (e.g., **64 KB**) and flush only when full.
+- Call `fs_sync()` **sparingly** (e.g., every few megabytes) to reduce latency.
+
+---
+
+## Verifying the 2 µs cadence
+
+- Probe **TIM2 TRGO** or toggle a spare GPIO inside the DMA HT/TC ISR to see **~0.512 ms** half‑buffer periods (256 samples × 2 µs).
+- Optionally dump a few seconds of data and measure zero‑crossing intervals offline.
+
+---
+
+## Known caveats
+
+- If mounting fails, make sure **`disk-name` ↔ mount point ↔ `storage_dev`** all match (e.g., `disk-name="SD"` ⇔ mount at `"/SD:"` ⇔ `storage_dev="SD"`).
+- For very high‑impedance sources, increase ADC **sample time** or buffer the signal.
+- If you see dropped blocks, raise SD SPI clock, enlarge buffers, and increase queue depth.
+
+---
+
+## Roadmap ideas
+
+- Add a header to the binary with sample rate, resolution, and timestamp.
+- Replace FAT with raw block logging for maximal throughput.
+- Add a graceful stop command that flushes and closes the file.
 
 
+
+## 📝 Environment
 
 - `$env:ZEPHYR_BASE="C:\Users\Admin\Developer\sdk\zephyr\zephyrproject\zephyr"`
 - `$env:ZEPHYR_SDK_INSTALL_DIR="C:\Users\Admin\Developer\sdk\zephyr\zephyr-sdk-0.17.2"`
 - `C:\Users\Admin\Developer\sdk\zephyr\zephyrproject\.venv\Scripts\Activate.ps1`
-- `C:\Windows\system32\cmd.exe /d /s /c "west build -b stm32f4_disco  . --build-dir .build  -- -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DEXTRA_DTC_OVERLAY_FILE=stm32f4_disco_stm32f407x.overlay"`
+- `C:\Windows\system32\cmd.exe /d /s /c "west build -p auto -b stm32f4_disco  . --build-dir .build  -- -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DEXTRA_DTC_OVERLAY_FILE=stm32f4_disco_stm32f407x.overlay"`
+- `C:\Windows\system32\cmd.exe /d /s /c "west build -p auto -b nucleo_f070rb  . --build-dir .build  -- -DCMAKE_EXPORT_COMPILE_COMMANDS=ON -DEXTRA_DTC_OVERLAY_FILE=nucleo_f070rb.overlay"`
+- `STM32_Programmer_CLI.exe -c port=SWD freq=4000 -w .build\zephyr\zephyr.bin 0x08000000 -v -rst`
+- `plink -serial COM8 -sercfg 115200,8,n,1,N  `
