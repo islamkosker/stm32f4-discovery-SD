@@ -1,0 +1,77 @@
+/ {
+    clocks {
+        hse: clk-hse {
+            status = "okay";
+            clock-frequency = <DT_FREQ_M(170)>;
+
+        };
+    };
+
+    vdd-supply {
+        regulator-name = "vdd";
+        status = "okay";
+    };
+};
+
+
+
+
+&spi1 {
+    status = "okay";
+    pinctrl-0 = <&spi1_sck_pa5 &spi1_miso_pa6 &spi1_mosi_pa7>;
+    pinctrl-names = "default";
+    cs-gpios = <&gpioa 11 GPIO_ACTIVE_LOW>;
+
+
+    sdhc0: sdhc@0 {
+        compatible = "zephyr,sdhc-spi-slot";
+        reg = <0>;
+        status = "okay";
+        mmc {
+            compatible = "zephyr,sdmmc-disk";
+            disk-name = "SDHC";
+            status = "okay";
+        };
+        spi-max-frequency = <24000000>;
+    };
+};
+
+#include <zephyr/dt-bindings/dma/stm32_dma.h>
+#include <zephyr/dt-bindings/pinctrl/stm32-pinctrl.h>
+#include <zephyr/dt-bindings/adc/adc.h>
+
+&{/} {
+    zephyr,user {
+        /* ADC1 IN1 = PA0 */
+        io-channels = <&adc1 1>;
+    };
+};
+
+&pinctrl {
+    adc1_in1_pa0: adc1_in1_pa0 {
+        pinmux = <STM32_PINMUX('A', 0, ANALOG)>;
+    };
+};
+
+&adc1 {
+    status = "okay";
+    pinctrl-0 = <&adc1_in1_pa0>;
+    compatible = "st,stm32-adc";
+    pinctrl-names = "default";
+    st,adc-clock-source = "SYNC";
+    st,adc-prescaler = <1>;
+
+    reg = <0x50000000 0x100>;
+    clocks = <&rcc STM32_CLOCK(AHB2, 13U)>;
+    interrupts = <18 0>;
+    status = "okay";
+    resolutions = <STM32_ADC_RES(12, 0x00)
+    STM32_ADC_RES(10, 0x01)
+    STM32_ADC_RES(8, 0x02)
+    STM32_ADC_RES(6, 0x03)>;
+    sampling-times = <3 7 13 25 48 93 248 641>;
+    st,adc-sequencer = "FULLY_CONFIGURABLE";
+    st,adc-oversampler = "OVERSAMPLER_MINIMAL";
+
+};
+

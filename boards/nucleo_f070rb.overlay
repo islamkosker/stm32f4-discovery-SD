@@ -1,0 +1,77 @@
+/*
+ * Copyright (c) 2025 Sudarsan N
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+/* stm32f4_disco.overlay */
+
+// &rcc {
+	//     clocks = <&pll>;
+	//     clock-frequency = <DT_FREQ_M(48)>;
+	//     ahb-prescaler = <1>;
+	//     apb1-prescaler = <2>;
+	//     status = "okay";
+// };
+
+
+// &pinctrl {
+	//     adc1_default: adc1_default {
+		//         pinmux = <STM32_PINMUX('A', 1, ANALOG)>;  // ADC_IN1 = PA1
+	//     };
+// };
+
+// &adc1 {
+	//     status = "okay";
+	//     pinctrl-0 = <&adc1_default>;
+	//     pinctrl-names = "default";
+	//     #address-cells = <1>;
+	//     #size-cells = <0>;
+	//     st,adc-clock-source = "ASYNC";
+	//     st,adc-prescaler = <1>;
+
+	//     channel0: channel@1 {
+		//         reg = <1>;  // ADC channel 1 (ADC_IN1)
+		//         zephyr,gain = "ADC_GAIN_1";
+		//         zephyr,reference = "ADC_REF_VDD_1";
+		//         zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+	//     };
+// };
+
+
+/ {
+	clocks {
+		adc_clk: adc_clk {
+			compatible = "fixed-clock";
+			#clock-cells = <0>;
+			clock-frequency = <8000000>; /* HSI14 = 8 MHz */
+			status = "okay";
+		};
+	};
+};
+
+&adc1 {
+	status = "okay";
+	st,adc-clock-source = "ASYNC";
+	clocks = <&adc_clk>;
+	pinctrl-0 = <&adc1_default>;
+	pinctrl-names = "default";
+
+	#address-cells = <1>;
+	#size-cells = <0>;
+	st,adc-clock-source = "ASYNC";
+	st,adc-prescaler = <1>;
+
+	channel0: channel@1 {
+		reg = <1>;  // ADC_IN1 (PA1)
+		zephyr,gain = "ADC_GAIN_1";
+		zephyr,reference = "ADC_REF_VDD_1";
+		zephyr,acquisition-time = <ADC_ACQ_TIME_DEFAULT>;
+	};
+};
+
+&pinctrl {
+	adc1_default: adc1_default {
+		pinmux = <STM32_PINMUX('A', 1, ANALOG)>; // PA1 as ADC_IN1
+	};
+};

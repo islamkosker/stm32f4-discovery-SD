@@ -1,16 +1,3 @@
    {
-   "C_Cpp.default.compileCommands": "${workspaceFolder}/.build/compile_commands.json",
-   "files.associations": {
-      ".fantomasignore": "ignore",
-      "logger.h": "c",
-      "kernel.h": "c",
-      "fs.h": "c",
-      "ff.h": "c",
-      "adc.h": "c",
-      "stm32f407xx.h": "c",
-      "app_adc.h": "c",
-      "stm32f4xx_ll_adc.h": "c",
-      "log.h": "c",
-      "kconfig": "c"
-   },
+      "C_Cpp.default.compileCommands": "${workspaceFolder}/.build/compile_commands.json",
    }
